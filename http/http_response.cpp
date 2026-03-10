@@ -1,77 +1,96 @@
-#include "http_request.h"
-#include <iostream>
-#include <algorithm>
-#include <stdexcept>
+#include "http_response.h"
+#include <sstream>
 
-// ── 查询接口 ─────────────────────────────────────────────────
+// ── 构造 ─────────────────────────────────────────────────────
 
-std::string HttpRequest::header(const std::string& key,
-                                const std::string& default_val) const {
-    // headers 的 key 已在解析时统一转为小写
-    std::string lower_key = key;
-    std::transform(lower_key.begin(), lower_key.end(),
-                   lower_key.begin(), ::tolower);
-    auto it = headers.find(lower_key);
-    return it != headers.end() ? it->second : default_val;
-}
+HttpResponse::HttpResponse() : status_code_(200) {}
 
-std::string HttpRequest::query_param(const std::string& key,
-                                     const std::string& default_val) const {
-    auto it = query.find(key);
-    return it != query.end() ? it->second : default_val;
-}
+// ── 状态码文本映射 ────────────────────────────────────────────
 
-std::string HttpRequest::param(const std::string& key,
-                               const std::string& default_val) const {
-    auto it = params.find(key);
-    return it != params.end() ? it->second : default_val;
-}
-
-// ── 语义判断 ─────────────────────────────────────────────────
-
-bool HttpRequest::keep_alive() const {
-    // HTTP/1.1 默认 Keep-Alive，除非显式 Connection: close
-    // HTTP/1.0 默认 close，除非显式 Connection: keep-alive
-    std::string conn_hdr = header("connection");
-    std::transform(conn_hdr.begin(), conn_hdr.end(), conn_hdr.begin(), ::tolower);
-
-    if (version == "HTTP/1.1") {
-        return conn_hdr != "close";
-    } else {
-        return conn_hdr == "keep-alive";
+std::string HttpResponse::status_text(int code) {
+    switch (code) {
+        case 200: return "OK";
+        case 201: return "Created";
+        case 204: return "No Content";
+        case 301: return "Moved Permanently";
+        case 302: return "Found";
+        case 304: return "Not Modified";
+        case 400: return "Bad Request";
+        case 401: return "Unauthorized";
+        case 403: return "Forbidden";
+        case 404: return "Not Found";
+        case 405: return "Method Not Allowed";
+        case 500: return "Internal Server Error";
+        case 502: return "Bad Gateway";
+        case 503: return "Service Unavailable";
+        default:  return "Unknown";
     }
 }
 
-bool HttpRequest::is_json() const {
-    std::string ct = header("content-type");
-    return ct.find("application/json") != std::string::npos;
+// ── 链式设置接口 ──────────────────────────────────────────────
+
+HttpResponse& HttpResponse::status(int code) {
+    status_code_ = code;
+    return *this;
 }
 
-int HttpRequest::content_length() const {
-    std::string cl = header("content-length");
-    if (cl.empty()) return -1;
-    try {
-        return std::stoi(cl);
-    } catch (...) {
-        return -1;
-    }
+HttpResponse& HttpResponse::header(const std::string& key,
+                                   const std::string& value) {
+    headers_[key] = value;
+    return *this;
 }
 
-// ── 调试 ─────────────────────────────────────────────────────
+// ── 内部：设置 body ───────────────────────────────────────────
 
-void HttpRequest::dump() const {
-    std::cout << "── HttpRequest ──────────────────\n"
-              << "  " << method << " " << path << " " << version << "\n";
-    for (auto& [k, v] : headers)
-        std::cout << "  " << k << ": " << v << "\n";
-    if (!query.empty()) {
-        std::cout << "  Query:\n";
-        for (auto& [k, v] : query)
-            std::cout << "    " << k << "=" << v << "\n";
+void HttpResponse::set_body(const std::string& content_type,
+                             const std::string& body) {
+    headers_["Content-Type"]   = content_type;
+    headers_["Content-Length"] = std::to_string(body.size());
+    headers_["\x01body"]       = body;
+}
+
+// ── 内部：序列化并写入连接 ────────────────────────────────────
+
+void HttpResponse::flush(Connection& conn) {
+    std::string body;
+    auto it = headers_.find("\x01body");
+    if (it != headers_.end()) {
+        body = it->second;
+        headers_.erase(it);
     }
-    if (!body.empty())
-        std::cout << "  Body(" << body.size() << "): "
-                  << body.substr(0, 80)
-                  << (body.size() > 80 ? "..." : "") << "\n";
-    std::cout << "─────────────────────────────────\n";
+
+    if (headers_.find("Server") == headers_.end())
+        headers_["Server"] = "coroutine-http/1.0";
+    if (headers_.find("Connection") == headers_.end())
+        headers_["Connection"] = "keep-alive";
+
+    std::ostringstream oss;
+    oss << "HTTP/1.1 " << status_code_ << " "
+        << status_text(status_code_) << "\r\n";
+    for (auto& [k, v] : headers_)
+        oss << k << ": " << v << "\r\n";
+    oss << "\r\n" << body;
+
+    conn.write(oss.str());
+}
+
+// ── 终结方法 ──────────────────────────────────────────────────
+
+void HttpResponse::text(Connection& conn, const std::string& body) {
+    set_body("text/plain; charset=utf-8", body);
+    flush(conn);
+}
+
+void HttpResponse::json(Connection& conn, const std::string& body) {
+    set_body("application/json", body);
+    flush(conn);
+}
+
+void HttpResponse::html(Connection& conn, const std::string& body) {
+    set_body("text/html; charset=utf-8", body);
+    flush(conn);
+}
+
+void HttpResponse::send(Connection& conn) {
+    flush(conn);
 }

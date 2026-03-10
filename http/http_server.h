@@ -30,6 +30,7 @@
 #include "../net/tcp_server.h"
 #include "http_request.h"
 #include "http_response.h"
+#include <memory>
 #include <functional>
 #include <vector>
 #include <string>
@@ -87,9 +88,10 @@ public:
     void listen(uint16_t port, int backlog = 128);
 
 private:
-    Scheduler&            sched_;
-    std::vector<Route>    routes_;
-    std::vector<Middleware> middlewares_;
+    Scheduler&                       sched_;
+    std::vector<Route>               routes_;
+    std::vector<Middleware>          middlewares_;
+    std::shared_ptr<TcpServer>       tcp_server_;  // 持有生命周期
 
     /** 处理单个 TCP 连接（含 Keep-Alive 循环） */
     void handle_connection(Connection conn);
