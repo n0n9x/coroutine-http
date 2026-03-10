@@ -85,13 +85,15 @@ public:
      * 绑定端口并向调度器注册监听协程。
      * 需要在之后调用 sched.run() 才会真正处理请求。
      */
-    void listen(uint16_t port, int backlog = 128);
+    using Dispatcher = std::function<void(std::function<void()>)>;
+    void listen(uint16_t port, Dispatcher dispatcher = nullptr, int backlog = 128);
 
 private:
     Scheduler&                       sched_;
     std::vector<Route>               routes_;
     std::vector<Middleware>          middlewares_;
-    std::shared_ptr<TcpServer>       tcp_server_;  // 持有生命周期
+    std::shared_ptr<TcpServer>       tcp_server_;
+    Dispatcher                       dispatcher_;
 
     /** 处理单个 TCP 连接（含 Keep-Alive 循环） */
     void handle_connection(Connection conn);

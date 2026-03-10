@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>聊天室 · coroutine-http</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #0f1117; color: #e2e8f0;
+    height: 100vh; display: flex; flex-direction: column;
+  }
+
+  /* 顶栏 */
+  .topbar {
+    background: #1a1f2e; border-bottom: 1px solid #2d3748;
+    padding: 14px 20px; display: flex; align-items: center;
+    justify-content: space-between; flex-shrink: 0;
+  }
+  .topbar h1 { font-size: 1rem; font-weight: 700; color: #fff; }
+  .topbar h1 span { color: #4f6ef7; }
+  .status { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #64748b; }
+  .dot.connected { background: #34d399; box-shadow: 0 0 6px #34d399; }
+  .online-count { color: #64748b; }
+
+  /* 主区域 */
+  .main { flex: 1; display: flex; overflow: hidden; }
+
+  /* 消息列表 */
+  .messages {
+    flex: 1; overflow-y: auto; padding: 20px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .messages::-webkit-scrollbar { width: 4px; }
+  .messages::-webkit-scrollbar-track { background: transparent; }
+  .messages::-webkit-scrollbar-thumb { background: #2d3748; border-radius: 2px; }
+
+  .msg { display: flex; gap: 10px; align-items: flex-start; }
+  .msg.system { justify-content: center; }
+  .msg.system .bubble {
+    background: transparent; color: #4b5563;
+    font-size: 0.78rem; padding: 4px 0; border: none;
+  }
+  .msg.mine { flex-direction: row-reverse; }
+
+  .avatar {
+    width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.85rem; font-weight: 700;
+    background: #1e3a5f; color: #7dd3fc;
+  }
+  .msg.mine .avatar { background: #312e81; color: #a5b4fc; }
+
+  .msg-body { max-width: 70%; }
+  .nick { font-size: 0.75rem; color: #64748b; margin-bottom: 4px; }
+  .msg.mine .nick { text-align: right; }
+  .bubble {
+    background: #1a1f2e; border: 1px solid #2d3748;
+    border-radius: 12px; padding: 10px 14px;
+    font-size: 0.88rem; line-height: 1.5; word-break: break-word;
+  }
+  .msg.mine .bubble { background: #1e3154; border-color: #2d4a8a; }
+  .time { font-size: 0.72rem; color: #4b5563; margin-top: 4px; }
+  .msg.mine .time { text-align: right; }
+
+  /* 输入区 */
+  .input-area {
+    background: #1a1f2e; border-top: 1px solid #2d3748;
+    padding: 16px 20px; display: flex; gap: 10px; flex-shrink: 0;
+  }
+  .input-area input {
+    flex: 1; background: #0f1117; border: 1px solid #2d3748;
+    border-radius: 8px; color: #e2e8f0; padding: 10px 14px;
+    font-size: 0.88rem; outline: none; transition: border-color 0.2s;
+  }
+  .input-area input:focus { border-color: #4f6ef7; }
+  .input-area button {
+    background: #4f6ef7; color: #fff; border: none;
+    border-radius: 8px; padding: 10px 20px; font-size: 0.88rem;
+    font-weight: 600; cursor: pointer; transition: background 0.2s;
+    white-space: nowrap;
+  }
+  .input-area button:hover { background: #3b56d9; }
+  .input-area button:disabled { background: #2d3748; cursor: not-allowed; }
+
+  /* 昵称弹窗 */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    display: flex; align-items: center; justify-content: center; z-index: 100;
+  }
+  .nick-card {
+    background: #1a1f2e; border: 1px solid #2d3748;
+    border-radius: 16px; padding: 32px; width: 320px; text-align: center;
+  }
+  .nick-card h2 { font-size: 1.2rem; margin-bottom: 8px; }
+  .nick-card p { font-size: 0.85rem; color: #64748b; margin-bottom: 24px; }
+  .nick-card input {
+    width: 100%; background: #0f1117; border: 1px solid #2d3748;
+    border-radius: 8px; color: #e2e8f0; padding: 12px;
+    font-size: 0.95rem; outline: none; margin-bottom: 16px;
+    text-align: center;
+  }
+  .nick-card input:focus { border-color: #4f6ef7; }
+  .nick-card button {
+    width: 100%; background: #4f6ef7; color: #fff; border: none;
+    border-radius: 8px; padding: 12px; font-size: 0.95rem;
+    font-weight: 600; cursor: pointer;
+  }
+  .nick-card button:hover { background: #3b56d9; }
+</style>
+</head>
+<body>
+
+<!-- 昵称输入弹窗 -->
+<div class="overlay" id="overlay">
+  <div class="nick-card">
+    <h2>🚀 加入聊天室</h2>
+    <p>coroutine-http WebSocket Demo</p>
+    <input id="nick-input" type="text" placeholder="输入你的昵称" maxlength="20">
+    <button onclick="joinRoom()">进入聊天室</button>
+  </div>
+</div>
+
+<!-- 顶栏 -->
+<div class="topbar">
+  <h1>⚡ <span>coroutine-http</span> · 实时聊天室</h1>
+  <div class="status">
+    <div class="dot" id="dot"></div>
+    <span id="status-text">未连接</span>
+    <span class="online-count" id="online-count"></span>
+  </div>
+</div>
+
+<!-- 消息区 -->
+<div class="main">
+  <div class="messages" id="messages"></div>
+</div>
+
+<!-- 输入区 -->
+<div class="input-area">
+  <input id="msg-input" type="text" placeholder="输入消息，回车发送..."
+         maxlength="500" disabled onkeydown="if(event.key==='Enter') sendMsg()">
+  <button id="send-btn" onclick="sendMsg()" disabled>发送</button>
+</div>
+
+<script>
+  let ws = null;
+  let myNick = '';
+
+  function joinRoom() {
+    const nick = document.getElementById('nick-input').value.trim();
+    if (!nick) return;
+    myNick = nick;
+    document.getElementById('overlay').style.display = 'none';
+    connect();
+  }
+
+  // 回车进入聊天室
+  document.getElementById('nick-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') joinRoom();
+  });
+
+  function connect() {
+    const host = location.host;
+    ws = new WebSocket(`ws://${host}/ws?nick=${encodeURIComponent(myNick)}`);
+
+    ws.onopen = () => {
+      setStatus(true);
+      document.getElementById('msg-input').disabled = false;
+      document.getElementById('send-btn').disabled = false;
+      document.getElementById('msg-input').focus();
+    };
+
+    ws.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        if (data.type === 'system') {
+          appendSystem(data.msg, data.online);
+        } else if (data.type === 'message') {
+          appendMessage(data.nick, data.msg, data.nick === myNick);
+        }
+      } catch {}
+    };
+
+    ws.onclose = () => {
+      setStatus(false);
+      document.getElementById('msg-input').disabled = true;
+      document.getElementById('send-btn').disabled = true;
+      appendSystem('连接已断开', null);
+    };
+
+    ws.onerror = () => {
+      appendSystem('连接出错', null);
+    };
+  }
+
+  function sendMsg() {
+    const input = document.getElementById('msg-input');
+    const msg = input.value.trim();
+    if (!msg || !ws || ws.readyState !== WebSocket.OPEN) return;
+    ws.send(msg);
+    input.value = '';
+  }
+
+  function setStatus(connected) {
+    document.getElementById('dot').className = 'dot' + (connected ? ' connected' : '');
+    document.getElementById('status-text').textContent = connected ? '已连接' : '未连接';
+  }
+
+  function appendSystem(msg, online) {
+    const el = document.createElement('div');
+    el.className = 'msg system';
+    el.innerHTML = `<div class="bubble">${escHtml(msg)}${online != null ? ' · 在线 ' + online + ' 人' : ''}</div>`;
+    addMsg(el);
+  }
+
+  function appendMessage(nick, msg, isMine) {
+    const now = new Date().toLocaleTimeString('zh', {hour:'2-digit', minute:'2-digit'});
+    const el = document.createElement('div');
+    el.className = 'msg' + (isMine ? ' mine' : '');
+    el.innerHTML = `
+      <div class="avatar">${escHtml(nick[0])}</div>
+      <div class="msg-body">
+        <div class="nick">${escHtml(nick)}</div>
+        <div class="bubble">${escHtml(msg)}</div>
+        <div class="time">${now}</div>
+      </div>`;
+    addMsg(el);
+  }
+
+  function addMsg(el) {
+    const container = document.getElementById('messages');
+    container.appendChild(el);
+    container.scrollTop = container.scrollHeight;
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+</script>
+</body>
+</html>

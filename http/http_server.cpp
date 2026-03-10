@@ -95,11 +95,12 @@ HttpServer& HttpServer::use(Middleware mw) {
 
 // ── listen ───────────────────────────────────────────────────
 
-void HttpServer::listen(uint16_t port, int backlog) {
+void HttpServer::listen(uint16_t port, Dispatcher dispatcher, int backlog) {
+    dispatcher_ = dispatcher;
     // 保存为成员变量，确保生命周期覆盖整个运行期
     // 若用局部 shared_ptr，listen() 返回后 TcpServer 析构，
     // listen_fd 被 close，accept_loop 协程再访问时 fd=-1
-    tcp_server_ = std::make_shared<TcpServer>(sched_, port, backlog);
+    tcp_server_ = std::make_shared<TcpServer>(sched_, port, dispatcher_, backlog);
 
     tcp_server_->on_connect([this](Connection conn) {
         handle_connection(std::move(conn));
