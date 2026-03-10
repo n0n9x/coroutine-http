@@ -5,11 +5,14 @@
 
 ---
 
-## 在线 Demo
+---
 
-启动服务器后浏览器打开 `http://localhost:8888`，可直接体验前后端联动页面。
+## Demo 截图
 
-![demo](https://img.shields.io/badge/demo-localhost:8888-4f6ef7?style=flat-square)
+> 本地运行效果（`./http_server` 启动后浏览器访问 `http://localhost:8888`）
+
+<!-- 截图放这里，push 后替换下面这行 -->
+![screenshot](static/screenshot.png)
 
 ---
 
