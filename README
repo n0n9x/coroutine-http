@@ -1,0 +1,204 @@
+# coroutine-http — 基于用户态协程的 C++ HTTP 服务器
+
+> 用 `ucontext` + `epoll` 从零实现的协程调度器，在此之上构建完整 HTTP/1.1 服务器。  
+> 以同步代码风格编写异步 I/O，无第三方依赖，Linux only。
+
+---
+
+## 功能概览
+
+| 层次 | 实现内容 |
+|------|---------|
+| **协程调度器** | `ucontext` 上下文切换、epoll 事件驱动、最小堆定时器、`Channel<T>` 协程通信 |
+| **TCP 层** | 非阻塞 accept、`Connection` 协程友好读写封装、`TcpServer` 链式 API |
+| **HTTP 层** | HTTP/1.1 解析、Keep-Alive、路径参数路由、中间件、JSON/文本/HTML 响应构建 |
+
+---
+
+## 架构总览
+
+```
+┌──────────────────────────────────────────────────────────┐
+│                       HttpServer                         │
+│    路由匹配 / 中间件 / Keep-Alive 循环 / 错误处理         │
+├──────────────────────────────────────────────────────────┤
+│            HttpParser  HttpRequest  HttpResponse         │
+├──────────────────────────────────────────────────────────┤
+│              Connection          TcpServer               │
+│    协程友好 read/write       非阻塞 accept 循环           │
+├──────────────────────────────────────────────────────────┤
+│                      Scheduler                           │
+│  ready_queue │ waiting_map │ timer_heap │ epoll_fd        │
+└──────────────────────────────────────────────────────────┘
+```
+
+**调度循环：**
+```
+while (有就绪任务 || 有 I/O 等待 || 有定时器)
+  1. 运行所有就绪协程（swapcontext）
+  2. 触发到期定时器 → 放入就绪队列
+  3. epoll_wait（超时 = 下一个定时器剩余毫秒）
+  4. I/O 就绪 → 对应协程放入就绪队列
+```
+
+---
+
+## 文件结构
+
+```
+.
+├── core/
+│   ├── coroutine.h       # Coroutine / Scheduler / Channel<T> 声明
+│   └── coroutine.cpp     # 调度器核心实现
+├── net/
+│   ├── connection.h/cpp  # TCP 连接封装，协程友好的 read/write
+│   └── tcp_server.h/cpp  # 监听 socket，per-connection 协程
+├── http/
+│   ├── http_request.h/cpp   # 请求数据类，query/路径参数/header 访问
+│   ├── http_response.h/cpp  # 链式响应构建，json/text/html 快捷方法
+│   ├── http_parser.h/cpp    # 流式 HTTP/1.1 解析，URL decode
+│   └── http_server.h/cpp    # 路由器 + 服务器，中间件支持
+├── test/
+│   └── bench.sh          # wrk 压测脚本
+├── main.cpp              # 示例：注册路由，启动服务
+├── Makefile
+└── README.md
+```
+
+---
+
+## 编译
+
+**依赖：** GCC 8+，Linux（需要 `ucontext` 和 `epoll`）
+
+```bash
+# Release 构建
+make
+
+# Debug 构建（开启 AddressSanitizer + UBSanitizer）
+make debug
+
+# 清理
+make clean
+```
+
+---
+
+## 运行
+
+```bash
+./http_server
+# 输出：[HttpServer] Listening on 0.0.0.0:8888
+```
+
+默认注册了以下路由（见 `main.cpp`）：
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/hello` | 返回纯文本 `Hello, World!` |
+| GET | `/ping` | 返回 JSON `{"status":"ok"}` |
+| GET | `/user/:id` | 路径参数示例，返回 `{"id":"<id>"}` |
+| GET | `/search` | query 参数示例，读取 `?q=` |
+| POST | `/echo` | 将请求 body 原样返回 |
+
+---
+
+## 测试
+
+### 手动 curl 测试
+
+```bash
+# 基本响应
+curl http://localhost:8888/hello
+curl http://localhost:8888/ping
+
+# 路径参数
+curl http://localhost:8888/user/42
+
+# Query 参数
+curl "http://localhost:8888/search?q=coroutine"
+
+# POST 请求
+curl -X POST http://localhost:8888/echo \
+     -H "Content-Type: application/json" \
+     -d '{"msg":"hello"}'
+
+# Keep-Alive（HTTP/1.1 默认复用连接）
+curl -v --http1.1 http://localhost:8888/ping http://localhost:8888/hello
+
+# 404 测试
+curl http://localhost:8888/not-exist
+```
+
+### 压测（需要 wrk）
+
+```bash
+# 安装 wrk
+sudo apt install wrk
+
+# 一键压测所有路由（自动启动/关闭服务器）
+make bench
+
+# 或手动运行
+./http_server &
+wrk -t4 -c100 -d10s --latency http://localhost:8888/ping
+```
+
+**参考压测结果（4 核 / 100 并发连接）：**
+
+| 路由 | QPS | 平均延迟 | P99 延迟 |
+|------|-----|---------|---------|
+| GET /ping | ~填入实测值~ | ~填入~ | ~填入~ |
+| GET /hello | ~填入实测值~ | ~填入~ | ~填入~ |
+| POST /echo | ~填入实测值~ | ~填入~ | ~填入~ |
+
+> 跑完 `make bench` 后将实测数字填入上表。
+
+---
+
+## 关键设计
+
+### 1. 协程切换（64 位指针兼容）
+`makecontext` 参数只能传 `int`（32 位），在 64 位系统上传指针需要拆成两个 `uint32_t`：
+```cpp
+uintptr_t ptr = reinterpret_cast<uintptr_t>(this);
+makecontext(&ctx, co_entry, 2,
+    (uint32_t)(ptr),        // 低 32 位
+    (uint32_t)(ptr >> 32)); // 高 32 位
+```
+
+### 2. epoll ADD → MOD 容错
+同一个 fd 可能在一个 `wait_event` 周期内被重复注册（例如 listen fd 的 accept 循环），第二次 `EPOLL_CTL_ADD` 会返回 `EEXIST`，此时自动降级为 `MOD`：
+```cpp
+if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, fd, &ev) < 0 && errno == EEXIST)
+    epoll_ctl(epoll_fd, EPOLL_CTL_MOD, fd, &ev);
+```
+
+### 3. 定时器最小堆
+`timer_heap` 用 `std::push_heap / pop_heap` 维护，`epoll_wait` 的超时时间等于最近定时器的剩余毫秒，实现精确唤醒，不做无谓轮询。
+
+### 4. HTTP Keep-Alive 循环
+同一个连接可以处理多个请求，直到客户端发送 `Connection: close` 或解析失败才关闭：
+```
+while (connection alive)
+  parse request → dispatch route → send response
+  if (!keep_alive) break
+```
+
+### 5. 路由匹配（:param 和 * 通配）
+路由按 `/` 分段逐一比较，`:name` 段捕获为路径参数，`*` 匹配剩余所有段：
+```
+pattern: /user/:id/posts
+path:    /user/42/posts   →  params["id"] = "42"
+
+pattern: /static/*
+path:    /static/css/app.css   →  匹配
+```
+
+---
+
+## 已知限制
+
+- **单线程**：调度器不加锁，不支持多线程
+- **无抢占**：计算密集型任务会阻塞整个调度器
+- **栈固定**：默认 128 KB，可通过 `CO_STACK_SIZE` 调整

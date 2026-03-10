@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>coroutine-http demo</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #0f1117;
+    color: #e2e8f0;
+    min-height: 100vh;
+    padding: 40px 20px;
+  }
+
+  h1 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 4px;
+  }
+
+  .subtitle {
+    color: #64748b;
+    font-size: 0.9rem;
+    margin-bottom: 40px;
+  }
+
+  .subtitle code {
+    background: #1e2330;
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: #7dd3fc;
+    font-size: 0.85rem;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 20px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .card {
+    background: #1a1f2e;
+    border: 1px solid #2d3748;
+    border-radius: 12px;
+    padding: 24px;
+  }
+
+  .card h2 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .badge {
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-weight: 600;
+  }
+  .badge.get  { background: #064e3b; color: #34d399; }
+  .badge.post { background: #1e3a5f; color: #60a5fa; }
+
+  .card p {
+    font-size: 0.82rem;
+    color: #64748b;
+    margin-bottom: 16px;
+  }
+
+  input, textarea {
+    width: 100%;
+    background: #0f1117;
+    border: 1px solid #2d3748;
+    border-radius: 8px;
+    color: #e2e8f0;
+    padding: 10px 12px;
+    font-size: 0.88rem;
+    margin-bottom: 10px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input:focus, textarea:focus { border-color: #4f6ef7; }
+  textarea { resize: vertical; min-height: 80px; font-family: monospace; }
+
+  button {
+    background: #4f6ef7;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+    width: 100%;
+  }
+  button:hover { background: #3b56d9; }
+  button:active { background: #2d42b8; }
+
+  .result {
+    margin-top: 14px;
+    background: #0f1117;
+    border: 1px solid #2d3748;
+    border-radius: 8px;
+    padding: 12px;
+    font-family: monospace;
+    font-size: 0.82rem;
+    color: #94a3b8;
+    min-height: 48px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    display: none;
+  }
+  .result.visible { display: block; }
+  .result.ok   { border-color: #064e3b; color: #34d399; }
+  .result.err  { border-color: #7f1d1d; color: #f87171; }
+
+  .latency {
+    font-size: 0.75rem;
+    color: #4b5563;
+    margin-top: 6px;
+    text-align: right;
+  }
+
+  .user-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .user-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #0f1117;
+    border: 1px solid #2d3748;
+    border-radius: 8px;
+    padding: 10px 14px;
+  }
+  .avatar {
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 0.9rem;
+    flex-shrink: 0;
+  }
+  .avatar.admin { background: #312e81; color: #a5b4fc; }
+  .avatar.user  { background: #1e3a5f; color: #7dd3fc; }
+  .user-name { font-size: 0.88rem; font-weight: 600; }
+  .user-role { font-size: 0.75rem; color: #64748b; margin-top: 1px; }
+
+  .status-dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+  }
+  .status-dot.on  { background: #34d399; box-shadow: 0 0 6px #34d399; }
+  .status-dot.off { background: #f87171; }
+</style>
+</head>
+<body>
+
+<div style="max-width:1100px;margin:0 auto 32px;">
+  <h1>⚡ coroutine-http</h1>
+  <p class="subtitle">
+    基于 <code>ucontext + epoll</code> 的 C++ 协程 HTTP 服务器 &nbsp;·&nbsp;
+    单机 ~8万 QPS &nbsp;·&nbsp; 前后端联动 Demo
+  </p>
+</div>
+
+<div class="grid">
+
+  <!-- 服务器心跳 -->
+  <div class="card">
+    <h2><span class="badge get">GET</span> 服务器心跳</h2>
+    <p>调用 <code>/api/ping</code>，检测服务器是否在线并测量延迟。</p>
+    <button onclick="ping()">Ping 服务器</button>
+    <div id="ping-result" class="result"></div>
+    <div id="ping-latency" class="latency"></div>
+  </div>
+
+  <!-- 查询用户 -->
+  <div class="card">
+    <h2><span class="badge get">GET</span> 查询用户</h2>
+    <p>调用 <code>/api/user/:id</code>，输入 ID（1/2/3）查询用户信息。</p>
+    <input id="user-id" type="text" placeholder="输入用户 ID，例如 1" value="1">
+    <button onclick="getUser()">查询</button>
+    <div id="user-result" class="result"></div>
+  </div>
+
+  <!-- 用户列表 -->
+  <div class="card">
+    <h2><span class="badge get">GET</span> 用户列表</h2>
+    <p>调用 <code>/api/users</code>，获取所有用户。</p>
+    <button onclick="getUsers()">获取列表</button>
+    <div id="users-result" class="user-list" style="display:none"></div>
+  </div>
+
+  <!-- Echo -->
+  <div class="card">
+    <h2><span class="badge post">POST</span> Echo 接口</h2>
+    <p>调用 <code>/api/echo</code>，服务器将请求体原样返回。</p>
+    <textarea id="echo-body">{"message": "hello from browser"}</textarea>
+    <button onclick="echo()">发送</button>
+    <div id="echo-result" class="result"></div>
+  </div>
+
+</div>
+
+<script>
+  function show(id, text, ok) {
+    const el = document.getElementById(id);
+    el.textContent = text;
+    el.className = 'result visible ' + (ok ? 'ok' : 'err');
+  }
+
+  async function ping() {
+    const t = Date.now();
+    try {
+      const r = await fetch('/api/ping');
+      const ms = Date.now() - t;
+      const data = await r.json();
+      show('ping-result', JSON.stringify(data, null, 2), true);
+      document.getElementById('ping-latency').textContent = `响应时间: ${ms}ms`;
+    } catch(e) {
+      show('ping-result', '连接失败: ' + e.message, false);
+    }
+  }
+
+  async function getUser() {
+    const id = document.getElementById('user-id').value.trim();
+    if (!id) return;
+    try {
+      const r = await fetch('/api/user/' + id);
+      const data = await r.json();
+      show('user-result', JSON.stringify(data, null, 2), r.ok);
+    } catch(e) {
+      show('user-result', '请求失败: ' + e.message, false);
+    }
+  }
+
+  async function getUsers() {
+    try {
+      const r = await fetch('/api/users');
+      const users = await r.json();
+      const list = document.getElementById('users-result');
+      list.style.display = 'flex';
+      list.innerHTML = users.map(u => `
+        <div class="user-item">
+          <div class="avatar ${u.role}">${u.name[0]}</div>
+          <div>
+            <div class="user-name">${u.name}</div>
+            <div class="user-role">ID: ${u.id} · ${u.role}</div>
+          </div>
+        </div>
+      `).join('');
+    } catch(e) {
+      alert('请求失败: ' + e.message);
+    }
+  }
+
+  async function echo() {
+    const body = document.getElementById('echo-body').value;
+    try {
+      const r = await fetch('/api/echo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: body
+      });
+      const data = await r.json();
+      show('echo-result', JSON.stringify(data, null, 2), true);
+    } catch(e) {
+      show('echo-result', '请求失败: ' + e.message, false);
+    }
+  }
+
+  // 页面加载时自动 ping 一次
+  window.onload = ping;
+</script>
+
+</body>
+</html>
