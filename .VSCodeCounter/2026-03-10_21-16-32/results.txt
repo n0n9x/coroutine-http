@@ -1,0 +1,60 @@
+Date : 2026-03-10 21:16:32
+Directory : c:\Users\N0ne\Desktop\epoll
+Total : 24 files,  1981 codes, 504 comments, 490 blanks, all 2975 lines
+
+Languages
++--------------+------------+------------+------------+------------+------------+
+| language     | files      | code       | comment    | blank      | total      |
++--------------+------------+------------+------------+------------+------------+
+| C++          |         20 |      1,532 |        482 |        391 |      2,405 |
+| HTML         |          1 |        214 |          4 |         26 |        244 |
+| Markdown     |          1 |        146 |          1 |         47 |        194 |
+| Shell Script |          1 |         60 |         17 |         16 |         93 |
+| Makefile     |          1 |         29 |          0 |         10 |         39 |
++--------------+------------+------------+------------+------------+------------+
+
+Directories
++----------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                               | files      | code       | comment    | blank      | total      |
++----------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                  |         24 |      1,981 |        504 |        490 |      2,975 |
+| . (Files)                                          |          3 |        331 |          8 |         74 |        413 |
+| core                                               |          2 |        371 |         33 |         79 |        483 |
+| db                                                 |          2 |         98 |          1 |         19 |        118 |
+| http                                               |          8 |        473 |        271 |        150 |        894 |
+| net                                                |          4 |        248 |         98 |         73 |        419 |
+| static                                             |          1 |        214 |          4 |         26 |        244 |
+| test                                               |          1 |         60 |         17 |         16 |         93 |
+| ws                                                 |          3 |        186 |         72 |         53 |        311 |
++----------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++----------------------------------------------------+--------------+------------+------------+------------+------------+
+| filename                                           | language     | code       | comment    | blank      | total      |
++----------------------------------------------------+--------------+------------+------------+------------+------------+
+| c:\Users\N0ne\Desktop\epoll\Makefile               | Makefile     |         29 |          0 |         10 |         39 |
+| c:\Users\N0ne\Desktop\epoll\README.md              | Markdown     |        146 |          1 |         47 |        194 |
+| c:\Users\N0ne\Desktop\epoll\core\coroutine.cpp     | C++          |        232 |         27 |         52 |        311 |
+| c:\Users\N0ne\Desktop\epoll\core\coroutine.h       | C++          |        139 |          6 |         27 |        172 |
+| c:\Users\N0ne\Desktop\epoll\db\database.cpp        | C++          |         70 |          1 |         12 |         83 |
+| c:\Users\N0ne\Desktop\epoll\db\database.h          | C++          |         28 |          0 |          7 |         35 |
+| c:\Users\N0ne\Desktop\epoll\http\http_parser.cpp   | C++          |        106 |         54 |         30 |        190 |
+| c:\Users\N0ne\Desktop\epoll\http\http_parser.h     | C++          |         17 |         31 |         12 |         60 |
+| c:\Users\N0ne\Desktop\epoll\http\http_request.cpp  | C++          |         60 |          6 |         11 |         77 |
+| c:\Users\N0ne\Desktop\epoll\http\http_request.h    | C++          |         26 |         29 |         15 |         70 |
+| c:\Users\N0ne\Desktop\epoll\http\http_response.cpp | C++          |         71 |          6 |         19 |         96 |
+| c:\Users\N0ne\Desktop\epoll\http\http_response.h   | C++          |         22 |         36 |         16 |         74 |
+| c:\Users\N0ne\Desktop\epoll\http\http_server.cpp   | C++          |        129 |         59 |         31 |        219 |
+| c:\Users\N0ne\Desktop\epoll\http\http_server.h     | C++          |         42 |         50 |         16 |        108 |
+| c:\Users\N0ne\Desktop\epoll\main.cpp               | C++          |        156 |          7 |         17 |        180 |
+| c:\Users\N0ne\Desktop\epoll\net\connection.cpp     | C++          |        107 |         43 |         30 |        180 |
+| c:\Users\N0ne\Desktop\epoll\net\connection.h       | C++          |         30 |         50 |         16 |         96 |
+| c:\Users\N0ne\Desktop\epoll\net\tcp_server.cpp     | C++          |         80 |          4 |         19 |        103 |
+| c:\Users\N0ne\Desktop\epoll\net\tcp_server.h       | C++          |         31 |          1 |          8 |         40 |
+| c:\Users\N0ne\Desktop\epoll\static\chat.html       | HTML         |        214 |          4 |         26 |        244 |
+| c:\Users\N0ne\Desktop\epoll\test\bench.sh          | Shell Script |         60 |         17 |         16 |         93 |
+| c:\Users\N0ne\Desktop\epoll\ws\chat_room.h         | C++          |         37 |         10 |          8 |         55 |
+| c:\Users\N0ne\Desktop\epoll\ws\websocket.cpp       | C++          |        114 |         38 |         31 |        183 |
+| c:\Users\N0ne\Desktop\epoll\ws\websocket.h         | C++          |         35 |         24 |         14 |         73 |
+| Total                                              |              |      1,981 |        504 |        490 |      2,975 |
++----------------------------------------------------+--------------+------------+------------+------------+------------+
