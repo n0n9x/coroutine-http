@@ -36,12 +36,14 @@
 #include <string>
 
 // Handler 签名：请求、响应、连接 三件套
-using HttpHandler = std::function<void(HttpRequest&, HttpResponse&, Connection&)>;
+using HttpHandler = std::function<void(HttpRequest &, HttpResponse &, Connection &)>;
 
 // ── 路由条目 ──────────────────────────────────────────────────
-struct Route {
-    std::string method;   // "GET" / "POST" / "*"（匹配任意）
-    std::string pattern;  //路由模式  "/user/:id"  "/static/*"
+// 它决定了当客户端（浏览器）访问不同的 URL 地址时，服务器应该执行哪一段代码
+struct Route
+{
+    std::string method;  // "GET" / "POST" / "*"（匹配任意）
+    std::string pattern; // 路由模式  "/user/:id"  "/static/*"
     HttpHandler handler;
 
     /**
@@ -56,28 +58,31 @@ struct Route {
      * @param params  输出：提取到的路径参数
      * @return        是否匹配成功
      */
-    bool match(const std::string& path,
-               std::unordered_map<std::string, std::string>& params) const;
+    bool match(const std::string &path,
+               std::unordered_map<std::string, std::string> &params) const;
 };
 
 // ── HttpServer ────────────────────────────────────────────────
-class HttpServer {
+class HttpServer
+{
 public:
-    explicit HttpServer(Scheduler& sched);
+    explicit HttpServer(Scheduler &sched);
 
     // ── 路由注册 ─────────────────────────────────
 
-    HttpServer& get   (const std::string& path, HttpHandler handler);
-    HttpServer& post  (const std::string& path, HttpHandler handler);
-    HttpServer& put   (const std::string& path, HttpHandler handler);
-    HttpServer& del   (const std::string& path, HttpHandler handler); // DELETE
-    HttpServer& route (const std::string& method,
-                       const std::string& path, HttpHandler handler);
+    HttpServer &get(const std::string &path, HttpHandler handler);  // 获取资源
+    HttpServer &post(const std::string &path, HttpHandler handler); // 提交数据
+    HttpServer &put(const std::string &path, HttpHandler handler);  // 更新资源
+    HttpServer &del(const std::string &path, HttpHandler handler);  // 删除资源
+    // 路由注册函数
+    HttpServer &route(const std::string &method,
+                      const std::string &path, HttpHandler handler);
 
     // ── 中间件（前置处理，按注册顺序依次执行）───
     // 返回 false 则终止后续处理（可用于鉴权、限流等）
-    using Middleware = std::function<bool(HttpRequest&, HttpResponse&, Connection&)>;
-    HttpServer& use(Middleware mw);
+    using Middleware = std::function<bool(HttpRequest &, HttpResponse &, Connection &)>;
+    // 添加中间件
+    HttpServer &use(Middleware mw);
 
     // ── 启动 ─────────────────────────────────────
 
@@ -89,20 +94,20 @@ public:
     void listen(uint16_t port, Dispatcher dispatcher = nullptr, int backlog = 128);
 
 private:
-    Scheduler&                       sched_;
-    std::vector<Route>               routes_;
-    std::vector<Middleware>          middlewares_;
-    std::shared_ptr<TcpServer>       tcp_server_;
-    Dispatcher                       dispatcher_;
+    Scheduler &sched_;                      // 调度器
+    std::vector<Route> routes_;             // 路由表
+    std::vector<Middleware> middlewares_;   // 各个中间件函数
+    std::shared_ptr<TcpServer> tcp_server_; // tcp服务器
+    Dispatcher dispatcher_;                 // 分发器函数
 
     /** 连接处理，处理单个 TCP 连接（含 Keep-Alive 循环） */
     void handle_connection(Connection conn);
 
     /** 路由分发：找到匹配的 Route 并调用 Handler */
-    void dispatch(HttpRequest& req, HttpResponse& res, Connection& conn);
+    void dispatch(HttpRequest &req, HttpResponse &res, Connection &conn);
 
     /** 发送默认错误响应 */
-    static void send_error(Connection& conn, int code, const std::string& msg);
+    static void send_error(Connection &conn, int code, const std::string &msg);
 };
 
 #endif // HTTP_SERVER_H

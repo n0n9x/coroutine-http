@@ -101,6 +101,7 @@ ssize_t Connection::write(const std::string& data) {
     const char* ptr = data.data();
 
     while (sent < total) {
+        // 此处的send是系统调用
         ssize_t n = send(fd_, ptr + sent, total - sent, MSG_NOSIGNAL);
 
         if (n > 0) {

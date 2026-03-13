@@ -21,20 +21,21 @@
 #include <cerrno>
 #include <cstring>
 
-class Connection {
+class Connection
+{
 public:
     // ── 构造 / 析构 ──────────────────────────────
 
-    Connection(int fd, Scheduler& sched);
+    Connection(int fd, Scheduler &sched);
     ~Connection();
 
     // 禁止拷贝，允许移动（fd 所有权转移） 移动构造函数
-    Connection(const Connection&)            = delete;
-    //禁止拷贝赋值
-    Connection& operator=(const Connection&) = delete;
-    Connection(Connection&& other) noexcept;
-    //移动赋值
-    Connection& operator=(Connection&& other) noexcept;
+    Connection(const Connection &) = delete;
+    // 禁止拷贝赋值
+    Connection &operator=(const Connection &) = delete;
+    Connection(Connection &&other) noexcept;
+    // 移动赋值
+    Connection &operator=(Connection &&other) noexcept;
 
     // ── 核心 I/O 接口 ────────────────────────────
 
@@ -57,7 +58,7 @@ public:
      *
      * @param data 要发送的数据
      */
-    ssize_t write(const std::string& data);
+    ssize_t write(const std::string &data);
 
     /**
      * 读取数据直到遇到指定分隔符（常用于读一行 HTTP header）。
@@ -68,7 +69,7 @@ public:
      *
      * @param delim 分隔符，默认 "\r\n"（HTTP 行尾）
      */
-    std::string read_until(const std::string& delim = "\r\n");
+    std::string read_until(const std::string &delim = "\r\n");
 
     /**
      * 读取恰好 n 个字节（常用于读 HTTP Body）。
@@ -89,10 +90,10 @@ public:
     void close();
 
 private:
-    int         fd_;//底层socket编号
-    Scheduler&  sched_;//调度器的引用
-    bool        closed_;
-    std::string read_buf_;  // 读缓冲区
+    int fd_;           // 浏览器socket编号
+    Scheduler &sched_; // 调度器的引用
+    bool closed_;
+    std::string read_buf_; // 读缓冲区
 };
 
 #endif // CONNECTION_H

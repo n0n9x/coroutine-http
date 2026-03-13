@@ -100,7 +100,8 @@ int main() {
                        "\"users\":" + room.nicks_json() + "}");
     });
 
-    app.listen(8888, [&ms](std::function<void()> f) { ms.post(std::move(f)); });
+    app.listen(8888,
+               [&ms](std::function<void()> f) { ms.post(std::move(f)); });
     ms.run();
     return 0;
 }

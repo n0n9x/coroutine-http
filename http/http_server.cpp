@@ -198,7 +198,7 @@ void HttpServer::handle_connection(Connection conn)
  *   - 完全没有匹配 → 404 Not Found
  */
 void HttpServer::dispatch(HttpRequest &req, HttpResponse &res, Connection &conn)
-{
+{   // req 请求信息 res 相应构造器  conn tcp连接
     bool path_matched = false;
 
     for (auto &r : routes_)
