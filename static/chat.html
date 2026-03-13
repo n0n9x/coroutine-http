@@ -65,6 +65,36 @@
   .time { font-size: 0.72rem; color: #4b5563; margin-top: 4px; }
   .msg.mine .time { text-align: right; }
 
+  /* 在线用户侧边栏 */
+  .sidebar {
+    width: 180px; flex-shrink: 0;
+    background: #1a1f2e; border-left: 1px solid #2d3748;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .sidebar-title {
+    padding: 14px 16px 10px;
+    font-size: 0.78rem; font-weight: 700;
+    color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;
+    border-bottom: 1px solid #2d3748; flex-shrink: 0;
+  }
+  .sidebar-title span { color: #34d399; margin-left: 4px; }
+  .user-list {
+    flex: 1; overflow-y: auto; padding: 10px 12px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .user-list::-webkit-scrollbar { width: 3px; }
+  .user-list::-webkit-scrollbar-thumb { background: #2d3748; border-radius: 2px; }
+  .user-item {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 0.83rem; color: #cbd5e1; padding: 4px 0;
+  }
+  .user-item .u-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: #34d399; flex-shrink: 0;
+  }
+  .user-item.me { color: #a5b4fc; font-weight: 600; }
+
   /* 输入区 */
   .input-area {
     background: #1a1f2e; border-top: 1px solid #2d3748;
@@ -133,9 +163,15 @@
   </div>
 </div>
 
-<!-- 消息区 -->
+<!-- 主区域 -->
 <div class="main">
   <div class="messages" id="messages"></div>
+
+  <!-- 在线用户侧边栏 -->
+  <div class="sidebar">
+    <div class="sidebar-title">在线用户 <span id="sidebar-count">0</span></div>
+    <div class="user-list" id="user-list"></div>
+  </div>
 </div>
 
 <!-- 输入区 -->
@@ -157,7 +193,6 @@
     connect();
   }
 
-  // 回车进入聊天室
   document.getElementById('nick-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') joinRoom();
   });
@@ -178,6 +213,7 @@
         const data = JSON.parse(e.data);
         if (data.type === 'system') {
           appendSystem(data.msg, data.online);
+          if (data.users) updateUserList(data.users);
         } else if (data.type === 'message') {
           appendMessage(data.nick, data.msg, data.nick === myNick);
         }
@@ -189,6 +225,7 @@
       document.getElementById('msg-input').disabled = true;
       document.getElementById('send-btn').disabled = true;
       appendSystem('连接已断开', null);
+      updateUserList([]);
     };
 
     ws.onerror = () => {
@@ -207,6 +244,18 @@
   function setStatus(connected) {
     document.getElementById('dot').className = 'dot' + (connected ? ' connected' : '');
     document.getElementById('status-text').textContent = connected ? '已连接' : '未连接';
+  }
+
+  function updateUserList(users) {
+    document.getElementById('sidebar-count').textContent = users.length;
+    const list = document.getElementById('user-list');
+    list.innerHTML = '';
+    users.forEach(nick => {
+      const el = document.createElement('div');
+      el.className = 'user-item' + (nick === myNick ? ' me' : '');
+      el.innerHTML = `<div class="u-dot"></div><span>${escHtml(nick)}</span>`;
+      list.appendChild(el);
+    });
   }
 
   function appendSystem(msg, online) {

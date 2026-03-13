@@ -59,11 +59,13 @@ void HttpResponse::flush(Connection& conn) {
         headers_.erase(it);
     }
 
+    //填充默认请求头
     if (headers_.find("Server") == headers_.end())
         headers_["Server"] = "coroutine-http/1.0";
     if (headers_.find("Connection") == headers_.end())
         headers_["Connection"] = "keep-alive";
 
+    //拼接状态行
     std::ostringstream oss;
     oss << "HTTP/1.1 " << status_code_ << " "
         << status_text(status_code_) << "\r\n";

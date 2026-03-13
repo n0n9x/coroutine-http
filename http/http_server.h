@@ -41,7 +41,7 @@ using HttpHandler = std::function<void(HttpRequest&, HttpResponse&, Connection&)
 // ── 路由条目 ──────────────────────────────────────────────────
 struct Route {
     std::string method;   // "GET" / "POST" / "*"（匹配任意）
-    std::string pattern;  // "/user/:id"  "/static/*"
+    std::string pattern;  //路由模式  "/user/:id"  "/static/*"
     HttpHandler handler;
 
     /**
@@ -95,7 +95,7 @@ private:
     std::shared_ptr<TcpServer>       tcp_server_;
     Dispatcher                       dispatcher_;
 
-    /** 处理单个 TCP 连接（含 Keep-Alive 循环） */
+    /** 连接处理，处理单个 TCP 连接（含 Keep-Alive 循环） */
     void handle_connection(Connection conn);
 
     /** 路由分发：找到匹配的 Route 并调用 Handler */

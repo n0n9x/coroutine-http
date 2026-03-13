@@ -28,10 +28,12 @@ public:
     Connection(int fd, Scheduler& sched);
     ~Connection();
 
-    // 禁止拷贝，允许移动（fd 所有权转移）
+    // 禁止拷贝，允许移动（fd 所有权转移） 移动构造函数
     Connection(const Connection&)            = delete;
+    //禁止拷贝赋值
     Connection& operator=(const Connection&) = delete;
     Connection(Connection&& other) noexcept;
+    //移动赋值
     Connection& operator=(Connection&& other) noexcept;
 
     // ── 核心 I/O 接口 ────────────────────────────
@@ -87,10 +89,10 @@ public:
     void close();
 
 private:
-    int         fd_;
-    Scheduler&  sched_;
+    int         fd_;//底层socket编号
+    Scheduler&  sched_;//调度器的引用
     bool        closed_;
-    std::string read_buf_;  // 读缓冲区（存放尚未被上层消费的数据）
+    std::string read_buf_;  // 读缓冲区
 };
 
 #endif // CONNECTION_H

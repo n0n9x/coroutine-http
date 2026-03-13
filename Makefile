@@ -1,6 +1,6 @@
 CXX      := g++
 CXXFLAGS := -std=c++17 -Wall -Wextra -O2 -I.
-LDFLAGS  := -pthread $(shell mariadb_config --libs) -lssl -lcrypto
+LDFLAGS  := -pthread -lssl -lcrypto
 TARGET   := http_server
 
 SRCS := core/coroutine.cpp \
@@ -10,7 +10,6 @@ SRCS := core/coroutine.cpp \
         http/http_response.cpp \
         http/http_parser.cpp \
         http/http_server.cpp \
-        db/database.cpp \
         ws/websocket.cpp \
         main.cpp
 

@@ -65,7 +65,7 @@ void HttpParser::parse_query_string(const std::string& query_str,
     while (std::getline(ss, pair, '&')) {
         if (pair.empty()) continue;
         size_t eq = pair.find('=');
-        if (eq == std::string::npos) {
+        if (eq == std::string::npos) {//没有等号
             req.query[url_decode(pair)] = "";
         } else {
             std::string key = url_decode(pair.substr(0, eq));
@@ -99,7 +99,7 @@ bool HttpParser::parse_request_line(const std::string& line,
 
     // 分离 path 和 query string
     size_t q = url.find('?');
-    if (q == std::string::npos) {
+    if (q == std::string::npos) {//url不含问号
         req.path = url_decode(url);
     } else {
         req.path = url_decode(url.substr(0, q));

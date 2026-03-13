@@ -35,6 +35,7 @@ Connection& Connection::operator=(Connection&& other) noexcept {
 
 void Connection::close() {
     if (!closed_ && fd_ >= 0) {
+        //全局作用域解析符 调用Linux 系统内核提供的原生 close(int fd)
         ::close(fd_);
         fd_     = -1;
         closed_ = true;
